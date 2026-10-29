@@ -30,7 +30,8 @@
    saying what it does. The comments are graded.
    ========================================================================== */
 
-
+show databases;
+--drop database cis_students_db;
 CREATE DATABASE IF NOT EXISTS cis_students_db;
 USE cis_students_db;
 
@@ -129,33 +130,70 @@ SELECT * FROM student_scores;
 -- STEP 4. Look at the counters the server is keeping
 -- =================================================================
 
--- your comment goes here
--- your statements go here
-
+-- Read counters information_schema.tables it lives in server's own catalogue
+SELECT table_name, auto_increment
+FROM information_schema.tables
+WHERE table_schema = 'cis_students_db'
+--AND auto_increment IS NOT NULL;
+set session information_schema_stats_expiry = 0;
 
 -- =================================================================
 -- STEP 5. Create the attendance table, starting its key at 500
 -- =================================================================
 
--- your comment goes here
--- your statements go here
+-- Create attendance table
+CREATE table if not EXISTS attendance (
+  attendance_id int AUTO_INCREMENT primary key,
+  student_id int not null,
+  attended_on date,
+  status varchar (10),
+  foreign key (student_id) REFERENCES students (student_id)
+)AUTO_INCREMENT = 500;
 
 
 -- =================================================================
 -- STEP 6. Add three attendance rows and watch the ids
 -- =================================================================
 
--- your comment goes here
--- your statements go here
+--Add three attendance rows using the insert clause
+--include column names that correspond to the values
 
+INSERT INTO attendance (student_id, attended_on, status) values
+(1, "2026-10-05", "present"),
+(2, "2026-10-05", "absent"),
+(3, "2026-10-06", "present")
 
+SELECT * from attendance;
+DESCRIBE attendance;
 -- =================================================================
 -- STEP 7. DELETE and TRUNCATE on a scrap table
 -- =================================================================
 
--- your comment goes here
--- your statements go here
+-- create scrap table using id with auto increment
+--and label varchar(10)
+use cis_students_db;
+analyze table scrap;
+TRUCATE table scrap;
 
+CREATE TABLE IF NOT EXISTS scrap (
+  id int auto_increment primary key,
+  label varchar(10)
+);
+DESCRIBE scrap;
+
+select * from scrap;
+insert into scrap value(null, "hello");
+insert into scrap value(null, "world");
+insert into scrap value(null, "friend");
+delete from scrap;
+Truncate table scrap;
+drop table scrap;
+
+
+
+--every time we add a row the counter does change
+--run analyze to reset and show proper information
+--when delete records coutnter does not change
 
 -- =================================================================
 -- STEP 8. A BEFORE INSERT trigger that fills in what you left out
@@ -164,26 +202,62 @@ SELECT * FROM student_scores;
 -- down to END, so select the whole block and run the selection.
 -- =================================================================
 
--- your comment goes here
--- your statements go here
+-- this is a trigger before an insert occurs.
+-- runs while the row is still on its way in, so it can change it
+CREATE TRIGGER trg_attendance_before_insert
+BEFORE INSERT ON attendance
+FOR EACH ROW
+BEGIN
+-- no date supplied, so use today's
+IF NEW.attended_on IS NULL THEN
+SET NEW.attended_on = CURDATE();
+END IF;
+-- store the status in capitals whatever case it arrived in
+SET NEW.status = UPPER(NEW.status);
+END
 
 
 -- =================================================================
 -- STEP 9. An AFTER DELETE trigger, the gap Lab 5d left open
 -- =================================================================
 
--- your comment goes here
--- your statements go here
-
+-- this is a trigger when a delete row occurs
+-- a deleted score changes the average just as much as the new one
+- a deleted score changes the average just as much as a new one
+CREATE TRIGGER trg_scores_after_delete
+AFTER DELETE ON test_scores
+FOR EACH ROW
+BEGIN
+-- OLD is the row that has just gone. there is no NEW here,
+-- because nothing was written
+UPDATE students
+SET gpa = calculate_gpa(OLD.student_id)
+WHERE student_id = OLD.student_id;
+END
+-- insert has new
+--update has new and  old
+-- delete only has old
 
 -- =================================================================
 -- STEP 10. Prove both triggers work
 -- =================================================================
 
--- your comment goes here
--- your statements go here
+-- insert student attrendance for student 4. Include null for the 
+--date the status is lowercase 'present'
+INSERT into attendance values (null, 4, null, 'present');
+select * from attendance;
 
+--insert test_score for Jenna student 1, quiz4, score = 100
+describe test_scores;
+Insert into test_scores values (null, "quiz4", 1, 100);
+--passing id to function and only perfirms to parameter in the where
+update students
+set gpa = calculate_gpa(student_id)
+where student_id=1
 
+select * from students;
+select * from test_scores;
+delete from test_scores where test_name = 'quiz4';
 -- =================================================================
 -- STEP 11 and 12. Push to GitHub and submit the URL
 -- Nothing to write here. Follow the handout.
